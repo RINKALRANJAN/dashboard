@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model, App Version, SDK & Error Type - Grouped Bar Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    
+    <div>
+        <label for="modelSelect">Select Model:</label>
+        <select id="modelSelect">
+            <option value="">All Models</option>
+            <!-- Options will be populated dynamically using JavaScript -->
+        </select>
+    </div>
+    <div>
+        <label for="appVersionSelect">Select App Version:</label>
+        <select id="appVersionSelect">
+            <option value="">All App Versions</option>
+            <!-- Options will be populated dynamically using JavaScript -->
+        </select>
+    </div>
+    <div>
+        <label for="sdkSelect">Select SDK:</label>
+        <select id="sdkSelect">
+            <option value="">All SDKs</option>
+            <!-- Options will be populated dynamically using JavaScript -->
+        </select>
+    </div>
+    <canvas id="groupedBarChart" width="200" height="70"></canvas>
+
+    <script>
+        fetch('/emails')
+            .then(response => response.json())
+            .then(data => {
+                // Function to get unique values for a given key in the dataset
+                function getUniqueValues(key) {
+                    return [...new Set(data.map(email => email[key]))];
+                }
+
+                // Function to filter data based on selected options
+                function filterData(selectedModel, selectedAppVersion, selectedSDK) {
+                    return data.filter(email =>
+                        (!selectedModel || email.model === selectedModel) &&
+                        (!selectedAppVersion || email.app_v === selectedAppVersion) &&
+                        (!selectedSDK || email.sdk === parseInt(selectedSDK))
+                    );
+                }
+
+                // Function to get unique error types for the selected data
+                function getUniqueErrorTypes(filteredData) {
+                    return [...new Set(filteredData.map(email => email.error))];
+                }
+
+                // Function to count occurrences of each error type for the selected data
+                function countErrorOccurrences(filteredData, errorTypes) {
+                    return errorTypes.map(errorType => filteredData.filter(email => email.error === errorType).length);
+                }
+
+                // Function to generate random colors for the chart
+                function getRandomColor() {
+                    const letters = '0123456789ABCDEF';
+                    let color = '#';
+                    for (let i = 0; i < 6; i++) {
+                        color += letters[Math.floor(Math.random() * 16)];
+                    }
+                    return color;
+                }
+
+                // Populate dropdown options with unique values for model, app version, and SDK
+                const modelSelect = document.getElementById('modelSelect');
+                getUniqueValues('model').forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    modelSelect.appendChild(option);
+                });
+
+                const appVersionSelect = document.getElementById('appVersionSelect');
+                getUniqueValues('app_v').forEach(appVersion => {
+                    const option = document.createElement('option');
+                    option.value = appVersion;
+                    option.textContent = appVersion;
+                    appVersionSelect.appendChild(option);
+                });
+
+                const sdkSelect = document.getElementById('sdkSelect');
+                getUniqueValues('sdk').forEach(sdk => {
+                    const option = document.createElement('option');
+                    option.value = sdk;
+                    option.textContent = sdk;
+                    sdkSelect.appendChild(option);
+                });
+
+                // Initialize the chart with default data
+                let chart;
+                const groupedBarChartElement = document.getElementById('groupedBarChart');
+                updateChart();
+
+                
+                // Event listeners for the dropdown changes
+                modelSelect.addEventListener('change', updateChart);
+                appVersionSelect.addEventListener('change', updateChart);
+                sdkSelect.addEventListener('change', updateChart);
+
+                function updateChart() {
+                    const selectedModel = modelSelect.value;
+                    const selectedAppVersion = appVersionSelect.value;
+                    const selectedSDK = sdkSelect.value;
+
+                    const filteredData = filterData(selectedModel, selectedAppVersion, selectedSDK);
+                    const errorTypes = getUniqueErrorTypes(filteredData);
+                    const errorOccurrences = countErrorOccurrences(filteredData, errorTypes);
+
+                    // Update the chart with the new data
+                    if (chart) {
+                        chart.destroy();
+                    }
+
+                    const chartData = {
+                        labels: errorTypes,
+                        datasets: [{
+                            label: `${selectedModel || 'All Models'}, ${selectedAppVersion || 'All App Versions'}, SDK ${selectedSDK || 'All SDKs'}`,
+                            data: errorOccurrences,
+                            backgroundColor: getRandomColor(),
+                        }]
+                    };
+
+                    chart = new Chart(groupedBarChartElement, {
+                        type: 'bar',
+                        data: chartData,
+                        options: {
+                            scales: {
+                                x: { stacked: true },
+                                y: { stacked: true }
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                // Handle error
+            });
+    </script>
+</body>
+</html>
+
